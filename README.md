@@ -7,5 +7,5 @@ pip install -U streamlit streamlit-webrtc opencv-python-headless
 ```
 Then, run this command.
 ```
-streamlit run your_script.py [-- script args]
+streamlit run app.py
 ```
