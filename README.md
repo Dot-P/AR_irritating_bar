@@ -7,5 +7,5 @@ pip install nicegui opencv-python
 ```
 Then, run this command.
 ```
-streamlit run app.py
+python3 app.py
 ```
