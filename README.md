@@ -3,7 +3,7 @@
 ## Installation and Run
 First, run this command.
 ```
-pip install -U streamlit streamlit-webrtc opencv-python-headless
+pip install nicegui opencv-python
 ```
 Then, run this command.
 ```
