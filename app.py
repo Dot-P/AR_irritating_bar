@@ -12,6 +12,13 @@ import numpy as np
 black_1px = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjYGBg+A8AAQQBAHAgZQsAAAAASUVORK5CYII='
 placeholder = Response(content=base64.b64decode(black_1px.encode('ascii')), media_type='image/png')  # FastAPIのレスポンスとして返す
 
+# 投影するイライラ棒画像
+overlay_image = cv2.imread("iraira.jpg")
+
+# ArUco辞書と検出器を初期化
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+aruco_detector = aruco.ArucoDetector(aruco_dict)
+
 # ゲームオブジェクトの定義
 class GameObject(BaseModel):
     start: bool = False  # ゲームの開始フラグ
@@ -49,20 +56,13 @@ async def grab_video_frame() -> Response:
         return placeholder
     
     # TODO: ARマーカーの表示
-
-    # 投影する画像
-    overlay_image = cv2.imread("iraira.jpg")
-
-    # ArUco辞書と検出器を初期化
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-    aruco_detector = aruco.ArucoDetector(aruco_dict)
         
     scale_percent = 50  # percent of original size
     width = int(frame.shape[1] * scale_percent / 100)
     height = int(frame.shape[0] * scale_percent / 100)
 
     # ARマーカーの検出
-    corners, ids, rejected = aruco_detector.detectMarkers(frame)
+    corners, _, _ = aruco_detector.detectMarkers(frame)
 
     if len(corners) > 0:
         # カメラ行列とレンズ歪みの設定
