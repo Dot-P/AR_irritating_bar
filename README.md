@@ -3,7 +3,7 @@
 ## Installation and Run
 First, run this command.
 ```
-pip install nicegui opencv-python
+pip install nicegui opencv-python opencv-contrib-python
 ```
 Then, run this command.
 ```
