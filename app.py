@@ -19,6 +19,12 @@ overlay_image = cv2.imread("iraira.jpg")
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_detector = aruco.ArucoDetector(aruco_dict)
 
+# ビデオキャプチャオブジェクトの初期化
+video_capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+if not video_capture.isOpened():
+    print("カメラが開けません")
+    video_capture = None  # カメラが開けない場合
+
 # ゲームオブジェクトの定義
 class GameObject(BaseModel):
     start: bool = False  # ゲームの開始フラグ
@@ -46,12 +52,9 @@ async def grab_video_frame() -> Response:
     カメラから1フレームを取得し、ゲームロジックを適用後、JPEG画像として返す。
     カメラが利用できない場合、プレースホルダー画像を返す。
     """
-    video_capture = cv2.VideoCapture(0,cv2.CAP_DSHOW)  # デフォルトのカメラ（ID: 0）を開く
-    if not video_capture.isOpened():
-        print("カメラが開けません")
+    if video_capture is None:
         return placeholder
     ret, frame = video_capture.read()
-    video_capture.release()
     if not ret:
         return placeholder
     
@@ -91,7 +94,7 @@ async def grab_video_frame() -> Response:
             # 画像の領域をARマーカーの領域に変換
             h, w, _ = overlay_image.shape
             src_pts = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype="float32")
-            dst_pts = imgpts.astype("float32")
+            dst_pts = np.array([imgpts[1],imgpts[0],imgpts[3],imgpts[2]], dtype="float32")
 
             # 変換行列を計算
             matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
@@ -149,6 +152,13 @@ ui.timer(
     interval=0.1,  # 100msごとに更新
     callback=lambda: video_image.set_source(f'/video/frame?{time.time()}')  # `/video/frame`エンドポイントをポーリング
 )
+
+# アプリケーション終了時にリソースを解放
+@app.on_event("shutdown")
+async def shutdown_event():
+    if video_capture is not None:
+        video_capture.release()
+        cv2.destroyAllWindows()
 
 # NiceGUIアプリケーションを起動
 ui.run()
