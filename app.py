@@ -7,7 +7,6 @@ from pydantic import BaseModel
 # ARマーカー
 import cv2.aruco as aruco
 import numpy as np
-import os
 
 # 黒い1px画像をBase64エンコードしたデータ（プレースホルダー画像として使用）
 black_1px = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjYGBg+A8AAQQBAHAgZQsAAAAASUVORK5CYII='
