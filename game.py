@@ -102,7 +102,18 @@ class Game():
         self.start_pnt = 0
         self.goal_pnt = 0
 
-    def detect_start(self, image):
+    def detect_start(self, image, add=True):
+        """
+        スタート地点を検出するメソッド
+
+        Args:
+            image: カメラ映像
+            add: bool start_pntを加算するかどうか
+
+        Outputs:
+            bool: 映像の中心がgoal地点にいるか否か
+            image: カメラ映像
+        """
 
         # 青色の閾値を設定
         COLOR_BLUE_BOTTOM = np.array([90,128,64])
@@ -145,14 +156,26 @@ class Game():
 
         if len(centroids) > 0 and is_center(centroids[0][0], centroids[0][1], crop_center_x, crop_center_y):
             print("detect start!")
-            self.start_pnt += 1
-            return image
+            if add:
+                self.start_pnt += 1
+            return True, image
         else:
-            return image
+            return False, image
 
         # """
 
-    def detect_goal(self, image):
+    def detect_goal(self, image, add=True):
+        """
+        ゴール地点を検出するメソッド
+
+        Args:
+            image: カメラ映像
+            add: bool goal_pntを加算するかどうか
+
+        Outputs:
+            bool: 映像の中心がゴール地点か否か
+            image: カメラ映像
+        """
 
         # 赤色の閾値を設定
         COLOR_RED_BOTTOM1 = np.array([0, 50, 50])
@@ -166,11 +189,21 @@ class Game():
         # 画像の中心を取得
         center_x, center_y = width // 2, height // 2
 
+        # 切り取る大きさ
+        CROP_RECT = 30
+
+        # 画像の中心を切り取る
+        crop_img = image[center_y-CROP_RECT : center_y+CROP_RECT, center_x-CROP_RECT : center_x+CROP_RECT]
+
+        crop_height, crop_width = crop_img.shape[:2]
+        crop_center_x , crop_center_y = crop_width // 2, crop_height // 2
+
+
         # マスク画像を取得
-        msk_img1 = detect_color(image, COLOR_RED_BOTTOM1, COLOR_RED_TOP1)
-        msk_img2 = detect_color(image, COLOR_RED_BOTTOM2, COLOR_RED_TOP2)
+        msk_img1 = detect_color(crop_img, COLOR_RED_BOTTOM1, COLOR_RED_TOP1)
+        msk_img2 = detect_color(crop_img, COLOR_RED_BOTTOM2, COLOR_RED_TOP2)
         msk_img = msk_img1 + msk_img2
-        masked_img = cv2.bitwise_and(image, image, mask= msk_img)
+        # masked_img = cv2.bitwise_and(image, image, mask= msk_img)
 
         _, _, _, centroids = cv2.connectedComponentsWithStats(msk_img)
 
@@ -184,16 +217,26 @@ class Game():
 
         """
 
-        if len(centroids) > 0 and is_center(centroids[0][0], centroids[0][1], center_x, center_y):
+        if len(centroids) > 0 and is_center(centroids[0][0], centroids[0][1], crop_center_x, crop_center_y):
             print("detect goal!")
-            self.goal_pnt += 1
-            return image
+            if add:
+                self.goal_pnt += 1
+            return True, image
         else:
-            return image
+            return False, image
 
         # """
 
     def detect_center_circle(self, image):
+        """
+        カメラ映像の中心が円であるかを検出するメソッド
+
+        Args:
+            image: カメラ映像
+
+        Outputs:
+            image: 輪郭線と検出図形を付加したカメラ映像
+        """
 
         # 画像のサイズを取得
         height, width = image.shape[:2]
@@ -232,7 +275,21 @@ class Game():
 
         return image
 
+    def reset(self):
+        """
+        ゲームをリセットするメソッド
+        """
+
+        self.state = GameState.READY
+        self.start_pnt = 0
+        self.goal_pnt = 0
+        self.timemanager = TimeManager
+
     def state_changer(self):
+        """
+        ステートマシンを更新するメソッド
+        """
+
         if self.start_pnt>10 and self.state == GameState.READY:
             self.start_pnt = 0
             self.state = GameState.START
@@ -243,12 +300,23 @@ class Game():
             self.timemanager.finish_measure()
 
     def rogic(self, image):
-        if self.state == GameState.READY:
-            image = self.detect_start(image)
-        elif self.state == GameState.START:
-            image = self.detect_center_circle(image)
+        """
+        ゲームロジックを動かすメソッド
 
-            image = self.detect_goal(image)
+        Args:
+            image: カメラ映像
+
+        Outputs:
+            image: 処理を施したカメラ映像
+        """
+        if self.state == GameState.READY:
+            _, image = self.detect_start(image)
+        elif self.state == GameState.START:
+            is_start, _ = self.detect_start(image, add=False)
+            is_goal, _ = self.detect_goal(image)
+
+            if (not is_start) and (not is_goal):
+                image = self.detect_center_circle(image)
         # elif self.state == GameState.END:
 
         self.state_changer()
