@@ -1,6 +1,7 @@
 
 import base64
 import time
+import os
 import cv2
 from fastapi import Response
 from nicegui import app, ui
@@ -22,11 +23,12 @@ overlay_image = cv2.imread("irritating_bar.jpg")
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_detector = aruco.ArucoDetector(aruco_dict)
 
-# # ビデオキャプチャオブジェクトの初期化
-# video_capture = cv2.VideoCapture(0)
-# if not video_capture.isOpened():
-#     print("カメラが開けません")
-#     video_capture = None  # カメラが開けない場合
+# ビデオキャプチャオブジェクトの初期化 (on Windows)
+if os.name == 'nt':
+    video_capture = cv2.VideoCapture(0)
+    if not video_capture.isOpened():
+        print("カメラが開けません")
+        video_capture = None  # カメラが開けない場合
 
 game = Game()
 
@@ -64,11 +66,12 @@ async def grab_video_frame() -> Response:
     カメラから1フレームを取得し、ゲームロジックを適用後、JPEG画像として返す。
     カメラが利用できない場合、プレースホルダー画像を返す。
     """
-    # ビデオキャプチャオブジェクトの初期化
-    video_capture = cv2.VideoCapture(0)
-    if not video_capture.isOpened():
-        print("カメラが開けません")
-        video_capture = None  # カメラが開けない場合
+    # ビデオキャプチャオブジェクトの初期化 (on Linux or Mac)
+    if os.name == 'posix':
+        video_capture = cv2.VideoCapture(0)
+        if not video_capture.isOpened():
+            print("カメラが開けません")
+            video_capture = None  # カメラが開けない場合
     if video_capture is None:
         return placeholder
     ret, frame = video_capture.read()
