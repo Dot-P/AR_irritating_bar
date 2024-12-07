@@ -1,5 +1,6 @@
 import time
 import cv2
+import math
 import numpy as np
 from enum import Flag, auto
 
@@ -39,7 +40,7 @@ class TimeManager:
         Output:
             measured_time: float  計測時間
         """
-        measured_time = time.end - self.start
+        measured_time = self.end - self.start
 
         return measured_time
 
@@ -79,6 +80,54 @@ def detect_color(image, color_bottom, color_top):
 
     # マスク画像を返す
     return msk_img
+
+def draw_circle(image, x, y, r, color):
+    """
+    指定座標を中心とした円を描画する関数
+
+    Args:
+        image: 描画先の映像
+        x: 中心のx座標
+        y: 中心のy座標
+        r: 円の半径
+        color: 三角形の色 (BGR)
+
+    Outputs:
+        image: 円が描画された画像
+    """
+
+    # フレームの中心に円を描画
+    marker_thickness = 2  # 線の太さ
+    cv2.circle(image, (x, y), r, color, marker_thickness)
+
+    return image
+
+
+
+def draw_triangle(image, x, y, r, color):
+    """
+    指定座標を中心とした正三角形を描画する関数
+
+    Args:
+        image: 描画先の画像
+        x: 中心のx座標
+        y: 中心のy座標
+        r: 中心から頂点の距離
+        color: 三角形の色 (BGR)
+
+    Outputs:
+        image: 正三角形が描画された画像
+    """
+    pnt1 = [x, y-r]
+    pnt2 = [x + (math.sqrt(3) / 2) * r, y + (r / 2)]
+    pnt3 = [x - (math.sqrt(3) / 2) * r, y + (r / 2)]
+
+    pts = np.array([pnt1, pnt2, pnt3], dtype='int32')
+
+    cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
+    cv2.fillConvexPoly(image, pts, (0, 255, 0))
+
+    return image
 
 class GameState(Flag):
     """
@@ -311,9 +360,19 @@ class Game():
         """
         if self.state == GameState.READY:
             _, image = self.detect_start(image)
+
+            height, width = image.shape[:2]
+            center_x, center_y = width//2, height//2
+
+            image = draw_circle(image, center_x, center_y, 15, (0, 255, 0))
         elif self.state == GameState.START:
             is_start, _ = self.detect_start(image, add=False)
             is_goal, _ = self.detect_goal(image)
+
+            height, width = image.shape[:2]
+            center_x, center_y = width//2, height//2
+
+            image = draw_triangle(image, center_x, center_y, 15, (0, 255, 0))
 
             if (not is_start) and (not is_goal):
                 image = self.detect_center_circle(image)

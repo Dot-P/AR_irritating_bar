@@ -2,6 +2,8 @@
 import base64
 import time
 import os
+if os.name == 'nt':
+    os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
 import cv2
 from fastapi import Response
 from nicegui import app, ui
@@ -25,6 +27,7 @@ aruco_detector = aruco.ArucoDetector(aruco_dict)
 
 # ビデオキャプチャオブジェクトの初期化 (on Windows)
 if os.name == 'nt':
+    global video_capture
     video_capture = cv2.VideoCapture(0)
     if not video_capture.isOpened():
         print("カメラが開けません")
@@ -55,9 +58,18 @@ def update_ui():
     if game.state == GameState.READY:
         message_label.set_text("Game Not Started")
     elif game.state == GameState.END:
-        message_label.set_text("Game END")
+        clear_time = format_time(game.timemanager.time_measured())
+        message_label.set_text(f"Game END! Clear Time: {clear_time}")
     else:
         message_label.set_text("")
+
+def reset_game():
+    """
+    ゲームをリセットする関数。
+    """
+    game.reset()
+    time_label.set_text("")
+    message_label.set_text("Game has been reset.")
 
 # `/video/frame`エンドポイントを定義
 @app.get('/video/frame')
@@ -66,6 +78,7 @@ async def grab_video_frame() -> Response:
     カメラから1フレームを取得し、ゲームロジックを適用後、JPEG画像として返す。
     カメラが利用できない場合、プレースホルダー画像を返す。
     """
+    global video_capture
     # ビデオキャプチャオブジェクトの初期化 (on Linux or Mac)
     if os.name == 'posix':
         video_capture = cv2.VideoCapture(0)
@@ -136,14 +149,12 @@ async def grab_video_frame() -> Response:
     height, width = frame.shape[:2]
     center_x, center_y = width // 2, height // 2
 
-    # フレームの中心に円を描画
-    marker_radius = 10  # 円の半径
-    marker_color = (0, 255, 0)  # 緑 (BGR)
-    marker_thickness = 2  # 線の太さ
-    cv2.circle(frame, (center_x, center_y), marker_radius, marker_color, marker_thickness)
-
     # TODO: ゲームロジックの更新
     frame = game.rogic(frame)
+
+    # タイマーストップ判定
+    if game.state == GameState.END:
+        game.timemanager.finish_measure()
 
     # UIを更新
     update_ui()
@@ -156,12 +167,12 @@ async def grab_video_frame() -> Response:
 with ui.column().classes('items-center').style('width: 400px; margin: 0 auto;'):
     # タイム表示用ラベル
     time_label = ui.label().classes('text-xl font-bold').style('position: absolute; top: 10px; left: 10px; right: 10px;')
-
     # NiceGUIのインタラクティブな画像コンポーネントを作成
-    video_image = ui.interactive_image().classes('w-full h-full').style('margin-top: 30px; margin-bottom: 50px; z-index: 5;')
-
+    video_image = ui.interactive_image().classes('w-full h-full').style('margin-top: 30px; margin-bottom: 20px; z-index: 5;')
     # メッセージ表示用ラベル
-    message_label = ui.label().classes('text-xl font-bold').style('margin-top: -50px;')
+    message_label = ui.label().classes('text-xl font-bold').style('margin-top: -20px;')
+    # リセットボタン
+    reset_button = ui.button("リセット").classes('w-32 mt-2').style('color: white; font-weight: bold; border-radius: 5px; padding: 10px;').on('click', lambda: reset_game())
 
 # タイマーで動画を更新
 ui.timer(
