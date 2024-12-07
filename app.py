@@ -49,7 +49,7 @@ def update_ui():
     """
     # タイム表示の更新
     if game.state == GameState.START:
-        time_display = format_time(game.timemanager.past_time())
+        time_display = format_time(game.timemanager.time())
         time_label.set_text(f"Time: {time_display}")
     else:
         time_label.set_text("")
@@ -58,7 +58,7 @@ def update_ui():
     if game.state == GameState.READY:
         message_label.set_text("Game Not Started")
     elif game.state == GameState.END:
-        clear_time = format_time(game.timemanager.time_measured())
+        clear_time = format_time(game.timemanager.time())
         message_label.set_text(f"Game END! Clear Time: {clear_time}")
     else:
         message_label.set_text("")

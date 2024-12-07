@@ -4,6 +4,14 @@ import math
 import numpy as np
 from enum import Flag, auto
 
+class TimeManagerState(Flag):
+    """
+    タイムマネージャーのフラッグ
+    """
+    WAIT = auto()
+    MEASURE = auto()
+
+
 class TimeManager:
     """
     時間管理クラス
@@ -13,6 +21,7 @@ class TimeManager:
         """
         コンストラクタ
         """
+        self.state = TimeManagerState.WAIT
         self.start = time.time()
         self.end = self.start
 
@@ -20,42 +29,40 @@ class TimeManager:
         """
         計測開始
         """
-        self.start = time.time()
+        if self.state == TimeManagerState.WAIT:
+            self.start = time.time()
+            self.state = TimeManagerState.MEASURE
 
-    def past_time(self):
+    def time(self):
         """
-        計測開始からの経過時間を取得する関数
+        時間を取得する関数
+        計測中は計測開始してからの時間を返す
+        待機中はself.endとself.startの差を返す
 
         Output:
-            past_time: float  経過時間
+            time: float  経過時間
         """
-        past_time = time.time() - self.start
+        if self.state == TimeManagerState.MEASURE:
+            __time = time.time() - self.start
+        elif self.state == TimeManagerState.WAIT:
+            __time = self.end - self.start
 
-        return past_time
-
-    def time_measured(self):
-        """
-        計測時間を取得する関数
-
-        Output:
-            measured_time: float  計測時間
-        """
-        measured_time = self.end - self.start
-
-        return measured_time
+        return __time
 
     def finish_measure(self):
         """
         計測終了
         """
-        self.end = time.time()
+        if self.state == TimeManagerState.MEASURE:
+            self.end = time.time()
+            self.state = TimeManagerState.WAIT
 
 def clahe(image):
 
     img_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0])
-    img = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+    image = cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
 
     return image
 
