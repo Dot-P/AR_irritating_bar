@@ -8,19 +8,21 @@ from pydantic import BaseModel
 import cv2.aruco as aruco
 import numpy as np
 
+from game import Game, GameState
+
 # 黒い1px画像をBase64エンコードしたデータ（プレースホルダー画像として使用）
 black_1px = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjYGBg+A8AAQQBAHAgZQsAAAAASUVORK5CYII='
 placeholder = Response(content=base64.b64decode(black_1px.encode('ascii')), media_type='image/png')  # FastAPIのレスポンスとして返す
 
 # 投影するイライラ棒画像
-overlay_image = cv2.imread("iraira.jpg")
+overlay_image = cv2.imread("irritating_bar.jpg")
 
 # ArUco辞書と検出器を初期化
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_detector = aruco.ArucoDetector(aruco_dict)
 
 # ビデオキャプチャオブジェクトの初期化
-video_capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+video_capture = cv2.VideoCapture(0)
 if not video_capture.isOpened():
     print("カメラが開けません")
     video_capture = None  # カメラが開けない場合
@@ -45,6 +47,8 @@ def update_game_state(start=None, end=None, score=None, message=None):
     if message is not None:
         game_object.message = message
 
+game = Game()
+
 # `/video/frame`エンドポイントを定義
 @app.get('/video/frame')
 async def grab_video_frame() -> Response:
@@ -57,9 +61,9 @@ async def grab_video_frame() -> Response:
     ret, frame = video_capture.read()
     if not ret:
         return placeholder
-    
+
     # TODO: ARマーカーの表示
-        
+
     scale_percent = 50  # percent of original size
     width = int(frame.shape[1] * scale_percent / 100)
     height = int(frame.shape[0] * scale_percent / 100)
@@ -111,25 +115,35 @@ async def grab_video_frame() -> Response:
             img_bg = cv2.bitwise_and(frame, frame, mask=mask_inv)
             img_fg = cv2.bitwise_and(warped_image, warped_image, mask=mask)
             frame = cv2.add(img_bg, img_fg)
-            
+
     # フレームの解像度を取得
     height, width = frame.shape[:2]
     center_x, center_y = width // 2, height // 2
 
     # フレームの中心に円を描画
-    marker_radius = 5  # 円の半径
-    marker_color = (0, 0, 255)  # 赤 (BGR)
-    marker_thickness = 3  # 線の太さ
+    marker_radius = 10  # 円の半径
+    marker_color = (0, 255, 0)  # 緑 (BGR)
+    marker_thickness = 2  # 線の太さ
     cv2.circle(frame, (center_x, center_y), marker_radius, marker_color, marker_thickness)
 
     # TODO: ゲームロジックの更新
+    frame = game.rogic(frame)
 
     # ゲームロジックを適用
-    if game_object.start:
-        cv2.putText(frame, f"Score: {game_object.score}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, game_object.message, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-    else:
+
+    # ゲームの状態がREADYなら
+    if game.state == GameState.READY:
         cv2.putText(frame, "Game Not Started", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+    # ゲームの状態がSTARTなら
+    elif game.state == GameState.START:
+        cv2.putText(frame, f"Time: {int(game.timemanager.past_time())}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, game_object.message, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+
+    # ゲームの状態がENDなら
+    elif game.state == GameState.END:
+        cv2.putText(frame, "Game END", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
 
     _, imencode_image = cv2.imencode('.jpg', frame)
     jpeg = imencode_image.tobytes()
@@ -161,4 +175,4 @@ async def shutdown_event():
         cv2.destroyAllWindows()
 
 # NiceGUIアプリケーションを起動
-ui.run()
+ui.run(port=8100)
