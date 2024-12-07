@@ -1,3 +1,4 @@
+
 import base64
 import time
 import cv2
@@ -21,33 +22,40 @@ overlay_image = cv2.imread("irritating_bar.jpg")
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_detector = aruco.ArucoDetector(aruco_dict)
 
-# ビデオキャプチャオブジェクトの初期化
-video_capture = cv2.VideoCapture(0)
-if not video_capture.isOpened():
-    print("カメラが開けません")
-    video_capture = None  # カメラが開けない場合
-
-# ゲームオブジェクトの定義
-class GameObject(BaseModel):
-    start: bool = False  # ゲームの開始フラグ
-    end: bool = False    # ゲームの終了フラグ
-    score: int = 0       # ゲームスコア
-    message: str = "Ready"  # 表示メッセージ
-
-def update_game_state(start=None, end=None, score=None, message=None):
-    """
-    ゲームオブジェクトの状態を更新します。
-    """
-    if start is not None:
-        game_object.start = start
-    if end is not None:
-        game_object.end = end
-    if score is not None:
-        game_object.score = score
-    if message is not None:
-        game_object.message = message
+# # ビデオキャプチャオブジェクトの初期化
+# video_capture = cv2.VideoCapture(0)
+# if not video_capture.isOpened():
+#     print("カメラが開けません")
+#     video_capture = None  # カメラが開けない場合
 
 game = Game()
+
+def format_time(seconds):
+    """
+    秒数を分:秒の形式に変換します。
+    """
+    minutes = seconds // 60
+    seconds = seconds % 60
+    return f"{int(minutes)}:{int(seconds):02d}"
+
+def update_ui():
+    """
+    UIを更新する関数。
+    """
+    # タイム表示の更新
+    if game.state == GameState.START:
+        time_display = format_time(game.timemanager.past_time())
+        time_label.set_text(f"Time: {time_display}")
+    else:
+        time_label.set_text("")
+
+    # メッセージ表示の更新
+    if game.state == GameState.READY:
+        message_label.set_text("Game Not Started")
+    elif game.state == GameState.END:
+        message_label.set_text("Game END")
+    else:
+        message_label.set_text("")
 
 # `/video/frame`エンドポイントを定義
 @app.get('/video/frame')
@@ -56,6 +64,11 @@ async def grab_video_frame() -> Response:
     カメラから1フレームを取得し、ゲームロジックを適用後、JPEG画像として返す。
     カメラが利用できない場合、プレースホルダー画像を返す。
     """
+    # ビデオキャプチャオブジェクトの初期化
+    video_capture = cv2.VideoCapture(0)
+    if not video_capture.isOpened():
+        print("カメラが開けません")
+        video_capture = None  # カメラが開けない場合
     if video_capture is None:
         return placeholder
     ret, frame = video_capture.read()
@@ -129,37 +142,23 @@ async def grab_video_frame() -> Response:
     # TODO: ゲームロジックの更新
     frame = game.rogic(frame)
 
-    # ゲームロジックを適用
-
-    # ゲームの状態がREADYなら
-    if game.state == GameState.READY:
-        cv2.putText(frame, "Game Not Started", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-    # ゲームの状態がSTARTなら
-    elif game.state == GameState.START:
-        cv2.putText(frame, f"Time: {int(game.timemanager.past_time())}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, game_object.message, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-
-    # ゲームの状態がENDなら
-    elif game.state == GameState.END:
-        cv2.putText(frame, "Game END", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
+    # UIを更新
+    update_ui()
 
     _, imencode_image = cv2.imencode('.jpg', frame)
     jpeg = imencode_image.tobytes()
     return Response(content=jpeg, media_type='image/jpeg')
 
-# 初期状態のゲームオブジェクト
-game_object = GameObject()
+# 親コンテナ
+with ui.column().classes('items-center').style('width: 400px; margin: 0 auto;'):
+    # タイム表示用ラベル
+    time_label = ui.label().classes('text-xl font-bold').style('position: absolute; top: 10px; left: 10px; right: 10px;')
 
-# NiceGUIのインタラクティブな画像コンポーネントを作成
-video_image = ui.interactive_image().classes('w-full h-full')
+    # NiceGUIのインタラクティブな画像コンポーネントを作成
+    video_image = ui.interactive_image().classes('w-full h-full').style('margin-top: 30px; margin-bottom: 50px; z-index: 5;')
 
-# ゲーム制御用のUIを追加
-with ui.row():
-    ui.button('Start Game', on_click=lambda: update_game_state(start=True, end=False, score=0))
-    ui.button('Stop Game', on_click=lambda: update_game_state(start=False, end=True))
-    ui.button('Add Score', on_click=lambda: update_game_state(score=game_object.score + 1))
+    # メッセージ表示用ラベル
+    message_label = ui.label().classes('text-xl font-bold').style('margin-top: -50px;')
 
 # タイマーで動画を更新
 ui.timer(
