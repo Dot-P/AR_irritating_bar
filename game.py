@@ -57,6 +57,11 @@ class TimeManager:
             self.end = time.time()
             self.state = TimeManagerState.WAIT
 
+"""
+Gameクラスで使用する関数群
+"""
+#####################################################
+
 def clahe(image):
 
     img_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
@@ -135,6 +140,8 @@ def draw_triangle(image, x, y, r, color):
     cv2.fillConvexPoly(image, pts, (0, 255, 0))
 
     return image
+
+#######################################################
 
 class GameState(Flag):
     """
@@ -326,11 +333,13 @@ class Game():
                 arclen = cv2.arcLength(cnt, True)
                 approx = cv2.approxPolyDP(cnt, arclen * 4.0e-2, True)
                 crop_img = cv2.drawContours(crop_img, [approx], -1, (255,0,0), 3, cv2.LINE_AA)
+                """
                 if len(approx) == 3:
                     font = cv2.FONT_HERSHEY_SIMPLEX
                     position = np.asarray(approx).reshape((-1, 2)).max(axis=0).astype('int32')
                     px, py = position
                     cv2.putText(crop_img, "triangle", (px, py), font, 0.3, (0, 0, 0), 2, cv2.LINE_AA)
+                """
 
         image[center_y-CROP_RECT : center_y+CROP_RECT, center_x-CROP_RECT : center_x+CROP_RECT] = crop_img
 
@@ -361,6 +370,7 @@ class Game():
                 is_triangle = True
 
         if len(contours) > 0 and is_triangle == False:
+            print("collision occur!")
             collision = True
 
         return collision, image
