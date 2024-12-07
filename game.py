@@ -40,14 +40,14 @@ class TimeManager:
         待機中はself.endとself.startの差を返す
 
         Output:
-            time: float  経過時間
+            t: float  経過時間
         """
         if self.state == TimeManagerState.MEASURE:
-            __time = time.time() - self.start
+            t = time.time() - self.start
         elif self.state == TimeManagerState.WAIT:
-            __time = self.end - self.start
+            t = self.end - self.start
 
-        return __time
+        return t
 
     def finish_measure(self):
         """
@@ -68,7 +68,7 @@ def clahe(image):
 
 def is_center(x, y, center_x, center_y):
     # error
-    ERR = 10
+    ERR = 25
 
     return (x<=center_x+ERR and x>=center_x-ERR and y <= center_y+ERR  and y>=center_y-ERR)
 
@@ -139,10 +139,16 @@ def draw_triangle(image, x, y, r, color):
 class GameState(Flag):
     """
     ゲーム状態のフラッグ
+    READY: 開始準備状態
+    PLAY: プレイ中
+    GAME_OVER: ゲームオーバー
+    CLEAR: ゲームクリア
     """
+
     READY = auto()
-    START = auto()
-    END = auto()
+    PLAY = auto()
+    GAME_OVER = auto()
+    CLEAR = auto()
 
 class Game():
     """
@@ -157,6 +163,7 @@ class Game():
         self.state = GameState.READY
         self.start_pnt = 0
         self.goal_pnt = 0
+        self.collision = False
 
     def detect_start(self, image, add=True):
         """
@@ -283,14 +290,15 @@ class Game():
 
         # """
 
-    def detect_center_circle(self, image):
+    def detect_center_contours(self, image):
         """
-        カメラ映像の中心が円であるかを検出するメソッド
+        カメラ映像の中心の輪郭を検出するメソッド
 
         Args:
             image: カメラ映像
 
         Outputs:
+            contours: 輪郭線
             image: 輪郭線と検出図形を付加したカメラ映像
         """
 
@@ -314,22 +322,50 @@ class Game():
         # 輪郭線を取得
         contours, _ = cv2.findContours(morp_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # 各輪郭線が円かどうか判断
         for cnt in contours:
-            arclen = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, arclen * 1.0e-2, True)
-            cv2.drawContours(crop_img, [approx], -1, (255, 0, 0), 3)
-            n_gon = len(approx)
-            if (n_gon > 10):
-                text= "circle"
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                position = np.asarray(approx).reshape((-1, 2)).max(axis=0).astype('int32')
-                px, py = position
-                cv2.putText(image, text, (center_x-CROP_RECT + px, center_y - CROP_RECT + py + 5), font, 0.5, (0, 0, 0), 2, cv2.LINE_AA)
+                arclen = cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, arclen * 4.0e-2, True)
+                crop_img = cv2.drawContours(crop_img, [approx], -1, (255,0,0), 3, cv2.LINE_AA)
+                if len(approx) == 3:
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    position = np.asarray(approx).reshape((-1, 2)).max(axis=0).astype('int32')
+                    px, py = position
+                    cv2.putText(crop_img, "triangle", (px, py), font, 0.3, (0, 0, 0), 2, cv2.LINE_AA)
 
         image[center_y-CROP_RECT : center_y+CROP_RECT, center_x-CROP_RECT : center_x+CROP_RECT] = crop_img
 
-        return image
+        return contours, image
+
+    def collision_check(self, image):
+        """
+        衝突を判定するメソッド
+
+        Args:
+            image: カメラ映像
+
+        Outputs:
+            collision: bool 衝突したかどうか
+            image: カメラ映像
+        """
+        collision = False
+
+        contours, image = self.detect_center_contours(image)
+
+        # 各輪郭線が三角形かどうか判断
+        is_triangle = False
+        for cnt in contours:
+            arclen = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, arclen * 4.0e-2, True)
+            n_gon = len(approx)
+            if (n_gon == 3):
+                is_triangle = True
+
+        if len(contours) > 0 and is_triangle == False:
+            collision = True
+
+        return collision, image
+
+
 
     def reset(self):
         """
@@ -339,21 +375,25 @@ class Game():
         self.state = GameState.READY
         self.start_pnt = 0
         self.goal_pnt = 0
-        self.timemanager = TimeManager
+        self.collision = False
+        self.timemanager = TimeManager()
 
     def state_changer(self):
         """
         ステートマシンを更新するメソッド
         """
 
-        if self.start_pnt>10 and self.state == GameState.READY:
+        if self.start_pnt > 10 and self.state == GameState.READY:
             self.start_pnt = 0
-            self.state = GameState.START
+            self.state = GameState.PLAY
             self.timemanager.start_measure()
-        elif self.goal_pnt > 10 and self.state == GameState.START:
+        elif self.goal_pnt > 10 and self.state == GameState.PLAY:
             self.goal_pnt = 0
-            self.state = GameState.END
+            self.state = GameState.CLEAR
             self.timemanager.finish_measure()
+        elif self.collision and self.state == GameState.PLAY:
+            self.collision = False
+            self.state = GameState.GAME_OVER
 
     def rogic(self, image):
         """
@@ -372,7 +412,7 @@ class Game():
             center_x, center_y = width//2, height//2
 
             image = draw_circle(image, center_x, center_y, 15, (0, 255, 0))
-        elif self.state == GameState.START:
+        elif self.state == GameState.PLAY:
             is_start, _ = self.detect_start(image, add=False)
             is_goal, _ = self.detect_goal(image)
 
@@ -382,8 +422,13 @@ class Game():
             image = draw_triangle(image, center_x, center_y, 15, (0, 255, 0))
 
             if (not is_start) and (not is_goal):
-                image = self.detect_center_circle(image)
-        # elif self.state == GameState.END:
+                self.collision, image = self.collision_check(image)
+
+        elif self.state == GameState.GAME_OVER:
+            height, width = image.shape[:2]
+            center_x, center_y = width//2, height//2
+
+            image = draw_triangle(image, center_x, center_y, 15, (0, 255, 0))
 
         self.state_changer()
 

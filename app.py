@@ -33,6 +33,7 @@ if os.name == 'nt':
         print("カメラが開けません")
         video_capture = None  # カメラが開けない場合
 
+global game
 game = Game()
 
 def format_time(seconds):
@@ -47,8 +48,9 @@ def update_ui():
     """
     UIを更新する関数。
     """
+    global game
     # タイム表示の更新
-    if game.state == GameState.START:
+    if game.state == GameState.PLAY:
         time_display = format_time(game.timemanager.time())
         time_label.set_text(f"Time: {time_display}")
     else:
@@ -57,7 +59,7 @@ def update_ui():
     # メッセージ表示の更新
     if game.state == GameState.READY:
         message_label.set_text("Game Not Started")
-    elif game.state == GameState.END:
+    elif game.state == GameState.CLEAR:
         clear_time = format_time(game.timemanager.time())
         message_label.set_text(f"Game END! Clear Time: {clear_time}")
     else:
@@ -145,15 +147,12 @@ async def grab_video_frame() -> Response:
             img_fg = cv2.bitwise_and(warped_image, warped_image, mask=mask)
             frame = cv2.add(img_bg, img_fg)
 
-    # フレームの解像度を取得
-    height, width = frame.shape[:2]
-    center_x, center_y = width // 2, height // 2
-
+    global game
     # TODO: ゲームロジックの更新
     frame = game.rogic(frame)
 
     # タイマーストップ判定
-    if game.state == GameState.END:
+    if game.state == GameState.CLEAR or game.state == GameState.GAME_OVER:
         game.timemanager.finish_measure()
 
     # UIを更新
