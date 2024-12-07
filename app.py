@@ -67,11 +67,11 @@ def update_ui():
 
     # メッセージ表示の更新
     if game.state == GameState.READY:
-        message_label.set_text("Game Not Started")
+        message_label.set_text("READY TO PLAY")
         message_label.classes('red')
     elif game.state == GameState.CLEAR:
         clear_time = format_time(game.timemanager.time())
-        message_label.set_text(f"Game END! Clear Time: {clear_time}")
+        message_label.set_text(f"Game CLEAR! Clear Time: {clear_time}")
         message_label.classes('green')
     elif game.state == GameState.GAME_OVER:
         message_label.set_text("Game Over")
@@ -85,7 +85,6 @@ def reset_game():
     """
     game.reset()
     time_label.set_text("")
-    message_label.set_text("Game has been reset.")
 
 # `/video/frame`エンドポイントを定義
 @app.get('/video/frame')
