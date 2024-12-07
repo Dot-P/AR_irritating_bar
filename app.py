@@ -18,6 +18,15 @@ from game import Game, GameState
 black_1px = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAA1JREFUGFdjYGBg+A8AAQQBAHAgZQsAAAAASUVORK5CYII='
 placeholder = Response(content=base64.b64decode(black_1px.encode('ascii')), media_type='image/png')  # FastAPIのレスポンスとして返す
 
+ui.add_css('''
+    .red {
+        color: red;
+    }
+    .green {
+        color: green;
+    }
+''')
+
 # 投影するイライラ棒画像
 overlay_image = cv2.imread("irritating_bar.jpg")
 
@@ -59,9 +68,14 @@ def update_ui():
     # メッセージ表示の更新
     if game.state == GameState.READY:
         message_label.set_text("Game Not Started")
+        message_label.classes('red')
     elif game.state == GameState.CLEAR:
         clear_time = format_time(game.timemanager.time())
         message_label.set_text(f"Game END! Clear Time: {clear_time}")
+        message_label.classes('green')
+    elif game.state == GameState.GAME_OVER:
+        message_label.set_text("Game Over")
+        message_label.classes('red')
     else:
         message_label.set_text("")
 
