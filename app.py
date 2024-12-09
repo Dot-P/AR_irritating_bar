@@ -28,7 +28,7 @@ ui.add_css('''
 ''')
 
 # 投影するイライラ棒画像
-overlay_image = cv2.imread("irritating_bar.jpg")
+overlay_image = cv2.imread("irritating_bar_demo.jpg")
 
 # ArUco辞書と検出器を初期化
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)

@@ -421,7 +421,7 @@ class Game():
             height, width = image.shape[:2]
             center_x, center_y = width//2, height//2
 
-            image = draw_circle(image, center_x, center_y, 15, (0, 255, 0))
+            image = draw_circle(image, center_x, center_y, 10, (0, 255, 0))
         elif self.state == GameState.PLAY:
             is_start, _ = self.detect_start(image, add=False)
             is_goal, _ = self.detect_goal(image)
@@ -429,7 +429,7 @@ class Game():
             height, width = image.shape[:2]
             center_x, center_y = width//2, height//2
 
-            image = draw_triangle(image, center_x, center_y, 15, (0, 255, 0))
+            image = draw_triangle(image, center_x, center_y, 10, (0, 255, 0))
 
             if (not is_start) and (not is_goal):
                 self.collision, image = self.collision_check(image)
@@ -438,7 +438,7 @@ class Game():
             height, width = image.shape[:2]
             center_x, center_y = width//2, height//2
 
-            image = draw_triangle(image, center_x, center_y, 15, (0, 255, 0))
+            image = draw_triangle(image, center_x, center_y, 10, (0, 255, 0))
 
         self.state_changer()
 
