@@ -1,4 +1,4 @@
-# taniguchi-brothers
+# AR_irritating_bar
 
 ## Installation and Run
 First, run this command.
