@@ -28,7 +28,7 @@ ui.add_css('''
 ''')
 
 # 投影するイライラ棒画像
-overlay_image = cv2.imread("irritating_bar_demo.jpg")
+overlay_image = cv2.imread("irritating_bar.jpg")
 
 # ArUco辞書と検出器を初期化
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
@@ -67,14 +67,14 @@ def update_ui():
 
     # メッセージ表示の更新
     if game.state == GameState.READY:
-        message_label.set_text("READY TO PLAY")
+        message_label.set_text("画面中心をSTARTに持っていってください")
         message_label.classes('red')
     elif game.state == GameState.CLEAR:
         clear_time = format_time(game.timemanager.time())
-        message_label.set_text(f"Game CLEAR! Clear Time: {clear_time}")
+        message_label.set_text(f"ゲームクリア！ タイム: {clear_time}")
         message_label.classes('green')
     elif game.state == GameState.GAME_OVER:
-        message_label.set_text("Game Over")
+        message_label.set_text("ゲームオーバー")
         message_label.classes('red')
     else:
         message_label.set_text("")
