@@ -108,10 +108,6 @@ async def grab_video_frame() -> Response:
 
     # TODO: ARマーカーの表示
 
-    scale_percent = 50  # percent of original size
-    width = int(frame.shape[1] * scale_percent / 100)
-    height = int(frame.shape[0] * scale_percent / 100)
-
     # ARマーカーの検出
     corners, _, _ = aruco_detector.detectMarkers(frame)
 
